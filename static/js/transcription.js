@@ -9,8 +9,8 @@ class SpeechTranscriber {
 
         this.recognition = new webkitSpeechRecognition();
         this.transcriptionDiv = document.getElementById('transcription');
-        this.recordButton = document.getElementById('recordButton');
         this.setupRecognition();
+        this.setupEventListeners();
     }
 
     setupRecognition() {
@@ -20,7 +20,13 @@ class SpeechTranscriber {
         this.recognition.lang = 'en-US';
 
         // Handle results
+        this.recognition.onstart = () => {
+            console.log('Speech recognition started');
+            this.transcriptionDiv.textContent = 'Listening...';
+        };
+
         this.recognition.onresult = (event) => {
+            console.log('Speech recognition result received');
             let interimTranscript = '';
             let finalTranscript = '';
 
@@ -53,24 +59,45 @@ class SpeechTranscriber {
         // Handle errors
         this.recognition.onerror = (event) => {
             console.error('Speech recognition error:', event.error);
-            if (event.error === 'not-allowed') {
-                this.transcriptionDiv.textContent = 
-                    'Please allow microphone access to use transcription.';
+            switch (event.error) {
+                case 'not-allowed':
+                    this.transcriptionDiv.textContent = 
+                        'Please allow microphone access to use transcription.';
+                    break;
+                case 'no-speech':
+                    console.log('No speech detected');
+                    break;
+                default:
+                    console.error(`Speech recognition error: ${event.error}`);
+                    this.transcriptionDiv.textContent = 
+                        'Error with transcription. Please refresh and try again.';
             }
         };
 
-        // Sync with recording button
-        this.recordButton.addEventListener('click', () => {
-            if (window.voiceRecorder.isRecording) {
+        this.recognition.onend = () => {
+            console.log('Speech recognition ended');
+            // Automatically restart if still recording
+            if (window.voiceRecorder && window.voiceRecorder.isRecording) {
+                console.log('Restarting speech recognition');
                 this.startTranscription();
-            } else {
-                this.stopTranscription();
             }
+        };
+    }
+
+    setupEventListeners() {
+        // Listen for recording events
+        window.addEventListener('recordingStarted', () => {
+            console.log('Recording started event received');
+            this.startTranscription();
+        });
+
+        window.addEventListener('recordingStopped', () => {
+            console.log('Recording stopped event received');
+            this.stopTranscription();
         });
     }
 
     startTranscription() {
-        this.transcriptionDiv.textContent = 'Listening...';
         try {
             this.recognition.start();
         } catch (e) {
