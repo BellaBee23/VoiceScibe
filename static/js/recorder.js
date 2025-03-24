@@ -19,27 +19,29 @@ class VoiceRecorder {
     }
 
     initializeEventListeners() {
-        this.recordButton.addEventListener('click', () => this.toggleRecording());
-        this.saveButton.addEventListener('click', () => this.saveRecording());
-    }
-
-    async toggleRecording() {
-        if (!this.isRecording) {
-            try {
-                this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                this.startRecording();
-            } catch (error) {
-                this.showError('Microphone access denied. Please enable microphone access.');
+        this.recordButton.addEventListener('click', async () => {
+            if (!this.isRecording) {
+                try {
+                    this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    this.startRecording();
+                    // Notify transcriber to start
+                    window.dispatchEvent(new CustomEvent('recordingStarted'));
+                } catch (error) {
+                    this.showError('Microphone access denied. Please enable microphone access.');
+                }
+            } else {
+                this.stopRecording();
+                // Notify transcriber to stop
+                window.dispatchEvent(new CustomEvent('recordingStopped'));
             }
-        } else {
-            this.stopRecording();
-        }
+        });
+        this.saveButton.addEventListener('click', () => this.saveRecording());
     }
 
     startRecording() {
         this.mediaRecorder = new MediaRecorder(this.stream);
         this.audioChunks = [];
-        
+
         this.mediaRecorder.ondataavailable = (event) => {
             this.audioChunks.push(event.data);
         };
